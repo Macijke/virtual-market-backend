@@ -10,6 +10,7 @@ const bcrypt = require('bcrypt');
 const {registerFormValidationRules, validateRegister, validateEdit, editFormValidationRules} = require("./src/validation");
 const models = {
     User: require('./src/user-module'),
+    Offer: require('./src/offer-module')
 }
 const tokenVerify = require('./src/tokenVerify');
 
@@ -87,6 +88,26 @@ app.post('/login', async (req, res) => {
 
 app.get('/market', tokenVerify,  async (req, res) => {
     res.status(200).json({message: 'Dostęp do rynku', user: req.user});
+});
+
+app.get('/offers', async (req, res) => {
+    const offers = await models.Offer.find({isAvailable: true}).exec();
+
+    res.status(200).json(offers);
+});
+
+app.get('/offers/:sort', async (req, res) => {
+    const sort = req.params.sort;
+    if (sort === 'asc') {
+        const offers = await models.Offer.find({isAvailable: true}).sort({price: 1}).exec();
+        res.status(200).json(offers);
+    } else if (sort === 'desc') {
+        const offers = await models.Offer.find({isAvailable: true}).sort({price: -1}).exec();
+        res.status(200).json(offers);
+    } else {
+        res.status(200).json({message: 'Niepoprawne zapytanie!'});
+    }
+
 });
 
 
