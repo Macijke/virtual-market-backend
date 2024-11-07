@@ -10,7 +10,8 @@ const bcrypt = require('bcrypt');
 const {registerFormValidationRules, validateRegister, validateEdit, editFormValidationRules} = require("./src/validation");
 const models = {
     User: require('./src/user-module'),
-    Offer: require('./src/offer-module')
+    Offer: require('./src/offer-module'),
+    Item: require('./src/item-module')
 }
 const tokenVerify = require('./src/tokenVerify');
 
@@ -37,27 +38,27 @@ app.use((req, res, next) => {
 });
 
 
-app.get('/', function (req, res) {
-    let privateKey = env.parsed.SECRET_KEY;
-
-    const token = jwt.sign({login: 'test', password: 'testos'}, privateKey, {expiresIn: '1d'});
-    console.log(token);
-    jwt.verify(token, privateKey, function(err, decoded) {
-        if (err) {
-            console.log(err);
-        } else {
-            console.log(decoded);
-        }
-    });
-    res.send('Hello World')
-});
+// app.get('/', function (req, res) {
+//     let privateKey = env.parsed.SECRET_KEY;
+//
+//     const token = jwt.sign({login: 'test', password: 'testos'}, privateKey, {expiresIn: '1d'});
+//     console.log(token);
+//     jwt.verify(token, privateKey, function(err, decoded) {
+//         if (err) {
+//             console.log(err);
+//         } else {
+//             console.log(decoded);
+//         }
+//     });
+//     res.send('Hello World')
+// });
 
 app.post('/signup', registerFormValidationRules(), validateRegister, async (req, res) => {
     const {login, password, email} = req.body;
     if (await models.User.findOne({login: login}).exec()) {
         res.status(200).json({message: 'Użytkownik o podanym loginie już istnieje!'});
     } else if (await models.User.findOne({email: email}).exec()) {
-        res.status(200).json({message: 'Użytkownik o podanym adresie e-mail już istnieje!'});
+        res.status(200).json({message: 'Ten adres e-mail jest już zajęty!'});
     } else {
         let passwordHash = bcrypt.hashSync(password, 10);
         const user = new models.User({
@@ -86,12 +87,15 @@ app.post('/login', async (req, res) => {
 
 });
 
-app.get('/market', tokenVerify,  async (req, res) => {
-    res.status(200).json({message: 'Dostęp do rynku', user: req.user});
-});
-
 app.get('/offers', async (req, res) => {
     const offers = await models.Offer.find({isAvailable: true}).exec();
+
+    res.status(200).json(offers);
+});
+
+app.get('/offers/:login', async (req, res) => {
+    const login = req.params.login;
+    const offers = await models.Offer.find({$and: [{isAvailable: true}, {sellerLogin: login}]});
 
     res.status(200).json(offers);
 });
@@ -110,5 +114,30 @@ app.get('/offers/:sort', async (req, res) => {
 
 });
 
+app.post('/buyItem', tokenVerify, async (req, res) => {
+    const {offerId, login} = req.body;
+    const offer = await models.Offer.findOne({_id: new mongoose.Types.ObjectId(offerId)}).exec();
+    console.log(offer);
+    if (offer !== null) {
+        const item = await models.Item.findOne({_id: new mongoose.Types.ObjectId(offer.uniqueItemId)}).exec();
+        console.log(item)
+        if (item !== null) {
+            offer.isAvailable = false;
+            offer.isSold = true;
+            offer.buyerLogin = login;
+            offer.sellDate = new Date();
+            await offer.save();
+
+            item.owenerLogin = login;
+            await item.save();
+
+            res.status(200).json({message: 'Zakupiono przedmiot!'});
+        } else {
+            res.status(200).json({message: 'Nie udało się zakupić przedmiotu! in item'});
+        }
+    } else {
+        res.status(200).json({message: 'Nie udało się zakupić przedmiotu!'});
+    }
+});
 
 app.listen(3003)

@@ -9,6 +9,7 @@ let itemSchema = new Schema({
     },
     float: Number,
     seed: Number,
+    ownerLogin: String,
     addons: {
         stickers: Array,
         nameTag: String
