@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 const env = require('dotenv').config();
-const e = require("express");
 
 const tokenVerify = (req, res, next) => {
     const token = req.cookies.token;
@@ -10,8 +9,7 @@ const tokenVerify = (req, res, next) => {
     }
 
     try {
-        const decoded = jwt.verify(token, env.parsed.SECRET_KEY);
-        req.user = decoded;
+        req.user = jwt.verify(token, env.parsed.SECRET_KEY);
         next();
     } catch (error) {
         return res.status(403).json({ message: 'Token nieprawidłowy lub wygasł' });
