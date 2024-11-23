@@ -95,8 +95,28 @@ app.post('/login', async (req, res) => {
 
 app.get('/offers', async (req, res) => {
     const offers = await models.Offer.find({isAvailable: true}).exec();
+    let fullOffers = [];
+    for (let offer of offers) {
+        const items = await models.Item.find({_id: new mongoose.Types.ObjectId(offer.uniqueItemId)}).exec();
+        for (let item of items) {
+            const skin = await models.Skin.findOne({skinId: item.skinId}).exec();
+            fullOffers.push({
+                uniqueId: item._id,
+                float: item.float,
+                seed: item.seed,
+                addons: item.addons,
+                weapon: skin.weapon,
+                name: skin.name,
+                rarity: skin.rarity,
+                image: skin.image,
+                sellerLogin: offer.sellerLogin,
+                price: offer.price,
+                creationDate: offer.creationDate
+            });
+        }
+    }
 
-    res.status(200).json(offers);
+    res.status(200).json(fullOffers);
 });
 
 app.get('/offers/:login', async (req, res) => {
